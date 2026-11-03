@@ -1,0 +1,6 @@
+@EcobinSellerService_HostAddress = http://localhost:5234
+
+GET {{EcobinSellerService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

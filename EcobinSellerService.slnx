@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EcobinSellerService.Application/EcobinSellerService.Application.csproj" />
+  <Project Path="EcobinSellerService.Domain/EcobinSellerService.Domain.csproj" />
+  <Project Path="EcobinSellerService.Infrastructure/EcobinSellerService.Infrastructure.csproj" />
+  <Project Path="EcobinSellerService/EcobinSellerService.csproj" />
+</Solution>

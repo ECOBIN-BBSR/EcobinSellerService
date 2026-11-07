@@ -37,5 +37,15 @@ namespace EcobinSellerService.Infrastructure.Repositories
         {
             await _context.SaveChangesAsync(cancellationToken);
         }
+
+        public async Task<Seller?> GetByEmailAsync(
+            string email, 
+            CancellationToken cancellationToken)
+        {
+            return await _context.Sellers
+                .FirstOrDefaultAsync(
+                    s => s.Email == email,
+                    cancellationToken);
+        }
     }
 }

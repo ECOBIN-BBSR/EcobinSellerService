@@ -8,10 +8,13 @@ namespace EcobinSellerService.Controllers
     public class AuthController : ControllerBase
     {
         private readonly RegisterSellerHandler _registerHandler;
-
-        public AuthController(RegisterSellerHandler registerHandler)
+        private readonly LoginSellerHandler _loginHandler;
+        public AuthController(
+            RegisterSellerHandler registerHandler, 
+            LoginSellerHandler loginSellerHandler)
         {
             _registerHandler = registerHandler;
+            _loginHandler = loginSellerHandler;
         }
 
         [HttpPost("register")]
@@ -31,6 +34,27 @@ namespace EcobinSellerService.Controllers
             catch (InvalidOperationException ex)
             {
                 return Conflict(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(
+            [FromBody] LoginSellerRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _loginHandler.Handle(
+                    request, cancellationToken);
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    message = ex.Message
+                });
             }
         }
     }

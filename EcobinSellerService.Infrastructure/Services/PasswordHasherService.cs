@@ -15,5 +15,18 @@ namespace EcobinSellerService.Infrastructure.Services
         {
             return _hasher.HashPassword(null!, password);
         }
+        
+        public bool VerifyPassword(
+            Seller seller,
+            string hashedPassword,
+            string providedPassword)
+        {
+            var result = _hasher.VerifyHashedPassword(
+                seller,
+                hashedPassword,
+                providedPassword);
+
+            return result != PasswordVerificationResult.Failed;
+        }
     }
 }

@@ -16,6 +16,8 @@ namespace EcobinSellerService.Infrastructure.Persistance
 
         public DbSet<Seller> Sellers => Set<Seller>();
 
+        public DbSet<SellerRefreshToken> SellerRefreshTokens => Set<SellerRefreshToken>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

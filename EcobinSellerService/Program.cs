@@ -20,8 +20,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<RegisterSellerHandler>();
 builder.Services.AddScoped<LoginSellerHandler>();
-
-
+builder.Services.AddScoped<RefreshSellerTokenHandler>();
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
@@ -31,6 +30,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ISellerRepository, SellerRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasherService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<ISellerRefreshTokenRepository, SellerRefreshTokenRepository>();
+builder.Services.AddScoped<IRefreshTokenService,RefreshTokenService>();
 
 //Authentication
 builder.Services
@@ -65,6 +66,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

@@ -1,61 +1,127 @@
-﻿using EcobinSellerService.Application.DTOs.Request;
+﻿
+using EcobinSellerService.Application.DTOs.Request;
 using EcobinSellerService.Application.Features;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EcobinSellerService.Controllers
+namespace EcobinSellerService.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
 {
-    [Route("api/auth")]
-    public class AuthController : ControllerBase
+    private readonly RegisterSellerHandler _registerHandler;
+    private readonly LoginSellerHandler _loginHandler;
+    private readonly RefreshSellerTokenHandler _refreshHandler;
+
+    public AuthController(
+        RegisterSellerHandler registerHandler,
+        LoginSellerHandler loginSellerHandler,
+        RefreshSellerTokenHandler refreshHandler)
     {
-        private readonly RegisterSellerHandler _registerHandler;
-        private readonly LoginSellerHandler _loginHandler;
-        public AuthController(
-            RegisterSellerHandler registerHandler, 
-            LoginSellerHandler loginSellerHandler)
+        _registerHandler = registerHandler;
+        _loginHandler = loginSellerHandler;
+        _refreshHandler = refreshHandler;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterSellerRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            _registerHandler = registerHandler;
-            _loginHandler = loginSellerHandler;
+            var result = await _registerHandler.Handle(
+                request, cancellationToken);
+
+            return Created($"/api/sellers/{result.Id}", result);
         }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(
-            [FromBody] RegisterSellerRequestDto request,
-            CancellationToken cancellationToken)
+        catch (InvalidOperationException ex)
         {
-            try
-            {
-                var result = await _registerHandler.Handle(
-                    request, cancellationToken);
-
-                return Created(
-                    $"/api/sellers/{result.Id}",
-                    result);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message });
-            }
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(
-            [FromBody] LoginSellerRequestDto request,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                var result = await _loginHandler.Handle(
-                    request, cancellationToken);
-
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new
-                {
-                    message = ex.Message
-                });
-            }
+            return Conflict(new { message = ex.Message });
         }
     }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginSellerRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _loginHandler.Handle(
+                request, cancellationToken);
+
+            Response.Cookies.Append(
+                "refreshToken",
+                result.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7),
+                    Path = "/api/auth"
+                });
+
+            return Ok(result.Response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+
+[HttpPost("refresh")]
+public async Task<IActionResult> Refresh(
+    CancellationToken cancellationToken)
+{
+    var refreshToken = Request.Cookies["refreshToken"];
+
+    if (string.IsNullOrEmpty(refreshToken))
+    {
+        return Unauthorized(new
+        {
+            message = "Refresh token is missing. Please log in again."
+        });
+    }
+
+    try
+    {
+        var result = await _refreshHandler.Handle(
+            refreshToken,
+            cancellationToken);
+
+        Response.Cookies.Append(
+            "refreshToken",
+            result.RefreshToken,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(7),
+                Path = "/api/auth"
+            });
+
+        return Ok(result.Response);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Response.Cookies.Delete(
+            "refreshToken",
+            new CookieOptions
+            {
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/api/auth"
+            });
+
+        return Unauthorized(new
+        {
+            message = ex.Message
+        });
+    }
+}
+
 }

@@ -1,4 +1,4 @@
-using System;
+
 using EcobinSellerService.Application.Interfaces;
 using EcobinSellerService.Domain.Entities;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using EcobinSellerService.Application.DTOs.Request;
 
 namespace EcobinSellerService.Infrastructure.Services;
 
@@ -18,8 +19,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         _configuration = configuration;
     }
 
-
-    public string Generatetoken(Seller seller)
+    public GeneratedAccessToken GenerateToken(Seller seller)
     {
         var key = _configuration["Jwt:Key"]!;
 
@@ -30,34 +30,28 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             securityKey,
             SecurityAlgorithms.HmacSha256);
 
+        var expiresAt = DateTime.UtcNow.AddMinutes(15);
+
         var claims = new[]
         {
-            new Claim(
-                JwtRegisteredClaimNames.Sub,
-                seller.Id.ToString()),
-
-            new Claim(
-                JwtRegisteredClaimNames.Email,
-                seller.Email),
-
-            new Claim(
-                JwtRegisteredClaimNames.Name,
-                seller.Name),
-
-            new Claim(
-                JwtRegisteredClaimNames.Jti,
-                Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Sub, seller.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, seller.Email),
+            new Claim(JwtRegisteredClaimNames.Name, seller.Name),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
+            expires: expiresAt,
             signingCredentials: credentials
         );
 
-        return new JwtSecurityTokenHandler()
-            .WriteToken(token);
+        return new GeneratedAccessToken
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(token),
+            ExpiresAtUtc = expiresAt
+        };
     }
 }

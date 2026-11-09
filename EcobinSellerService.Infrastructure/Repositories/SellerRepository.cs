@@ -47,5 +47,16 @@ namespace EcobinSellerService.Infrastructure.Repositories
                     s => s.Email == email,
                     cancellationToken);
         }
+
+        public async Task<Seller?> GetByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default)
+        {
+            return await _context.Sellers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    s => s.Id == id,
+                    cancellationToken);
+        }
     }
 }

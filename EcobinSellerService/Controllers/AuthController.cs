@@ -12,15 +12,18 @@ public class AuthController : ControllerBase
     private readonly RegisterSellerHandler _registerHandler;
     private readonly LoginSellerHandler _loginHandler;
     private readonly RefreshSellerTokenHandler _refreshHandler;
+    private readonly LogoutSellerHandler _logoutHandler;
 
     public AuthController(
         RegisterSellerHandler registerHandler,
         LoginSellerHandler loginSellerHandler,
-        RefreshSellerTokenHandler refreshHandler)
+        RefreshSellerTokenHandler refreshHandler,
+        LogoutSellerHandler logoutSellerHandler)
     {
         _registerHandler = registerHandler;
         _loginHandler = loginSellerHandler;
         _refreshHandler = refreshHandler;
+        _logoutHandler = logoutSellerHandler;
     }
 
     [HttpPost("register")]
@@ -72,56 +75,85 @@ public class AuthController : ControllerBase
     }
 
 
-[HttpPost("refresh")]
-public async Task<IActionResult> Refresh(
-    CancellationToken cancellationToken)
-{
-    var refreshToken = Request.Cookies["refreshToken"];
-
-    if (string.IsNullOrEmpty(refreshToken))
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(
+        CancellationToken cancellationToken)
     {
-        return Unauthorized(new
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (string.IsNullOrEmpty(refreshToken))
         {
-            message = "Refresh token is missing. Please log in again."
-        });
+            return Unauthorized(new
+            {
+                message = "Refresh token is missing. Please log in again."
+            });
+        }
+
+        try
+        {
+            var result = await _refreshHandler.Handle(
+                refreshToken,
+                cancellationToken);
+
+            Response.Cookies.Append(
+                "refreshToken",
+                result.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7),
+                    Path = "/api/auth"
+                });
+
+            return Ok(result.Response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Response.Cookies.Delete(
+                "refreshToken",
+                new CookieOptions
+                {
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/api/auth"
+                });
+
+            return Unauthorized(new
+            {
+                message = ex.Message
+            });
+        }
     }
 
-    try
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(
+        CancellationToken cancellationToken)
     {
-        var result = await _refreshHandler.Handle(
-            refreshToken,
-            cancellationToken);
+        var refreshToken = Request.Cookies["refreshToken"];
 
-        Response.Cookies.Append(
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await _logoutHandler.Handle(
+                refreshToken,
+                cancellationToken);
+        }
+
+        Response.Cookies.Delete(
             "refreshToken",
-            result.RefreshToken,
             new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddDays(7),
                 Path = "/api/auth"
             });
 
-        return Ok(result.Response);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        Response.Cookies.Delete(
-            "refreshToken",
-            new CookieOptions
-            {
-                Secure = true,
-                SameSite = SameSiteMode.Lax,
-                Path = "/api/auth"
-            });
-
-        return Unauthorized(new
+        return Ok(new
         {
-            message = ex.Message
+            message = "Logged out successfully."
         });
     }
-}
 
 }

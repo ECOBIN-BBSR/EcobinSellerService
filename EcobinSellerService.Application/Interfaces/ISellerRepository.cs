@@ -21,5 +21,10 @@ namespace EcobinSellerService.Application.Interfaces
         Task<Seller?> GetByEmailAsync(
             string email, 
             CancellationToken cancellationToken);
+
+        Task<Seller?> GetByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default);
+
     }
 }
